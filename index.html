@@ -265,6 +265,19 @@
     body { padding-bottom: 60px; }
   }
   .mobile-nav { display: none; }
+
+  .btn-delete { background: none; border: 1px solid rgba(232,50,26,0.4); color: var(--fire); font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .btn-delete:hover { background: rgba(232,50,26,0.1); border-color: var(--fire); }
+  .comment-box { margin-top: 14px; }
+  .comment-box textarea { width: 100%; background: var(--smoke); border: 1.5px solid var(--steel); border-radius: 8px; color: var(--white); font-family: 'Barlow', sans-serif; font-size: 0.88rem; padding: 10px 13px; outline: none; resize: vertical; min-height: 72px; transition: border-color 0.2s; }
+  .comment-box textarea:focus { border-color: var(--blue); }
+  .comment-box textarea::placeholder { color: var(--steel); }
+  .comment-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .btn-add-comment { background: var(--blue); border: none; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+  .btn-add-comment:hover { background: #2563EB; }
+  .log-comment { background: rgba(59,130,246,0.06); border-left: 3px solid var(--blue); padding-left: 10px; }
+  .log-comment .log-desc { color: var(--fog); font-style: italic; }
+
   .footer { background: var(--ash); border-top: 1px solid var(--steel); text-align: center; padding: 18px; font-size: 0.72rem; color: var(--steel); letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
 </head>
@@ -283,7 +296,6 @@
     <div class="login-field"><label>Password</label><input type="password" id="lp" autocomplete="current-password" placeholder="Enter password"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
     <div class="lockout-msg" id="lockout-msg"></div>
-    <p style="text-align:center;margin-top:20px;font-size:0.72rem;color:var(--steel)">Having trouble? <button onclick="hardReset()" style="background:none;border:none;color:var(--mist);font-size:0.72rem;cursor:pointer;text-decoration:underline;">Reset portal data</button></p>
   </div>
 </div>
 
@@ -531,7 +543,10 @@
   <div class="modal-box">
     <div class="modal-header">
       <h3 id="modal-title">Ticket Details</h3>
-      <button class="modal-close" onclick="closeModal()">✕ Close</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button class="btn-delete" id="modal-delete-btn" style="display:none" onclick="deleteTicket()">Delete Ticket</button>
+        <button class="modal-close" onclick="closeModal()">✕ Close</button>
+      </div>
     </div>
     <div class="modal-body" id="modal-body"></div>
   </div>
@@ -873,18 +888,24 @@ function openTicket(id) {
   else if(t.type==='knox'){fields+=f('Request Type',t.knox_type)+f('Box Location',t.box_location)+f('Emergency Contact',t.owner_name)+f('Contact Phone',t.owner_phone)+f('Contact Email',t.owner_email)+f('Preferred Service Date',t.pref_date)+ff('Keys / Access Items',t.key_list)+ff('Notes',t.notes)+f('Requesting Officer',t.submitted_by||t.submittedByName)+f('Officer Contact',t.officer_contact);}
 
   // Status section
+  // Show delete button for admins on non-archived tickets
+  const deleteBtn = document.getElementById('modal-delete-btn');
+  if (deleteBtn) deleteBtn.style.display = (isAdmin && !isLocked) ? '' : 'none';
+
   const statusSection = isAdmin && !isLocked ? `
     <div class="status-section">
       <h4>Workflow Status</h4>
       <div class="status-opts">
         ${Object.entries(STATUS_LABELS).map(([k,v])=>`<button class="status-opt ${t.status===k?'cur-'+k:''}" data-s="${k}" onclick="pickStatus('${k}',this)">${v}</button>`).join('')}
       </div>
-      <button class="btn-save-status" onclick="saveStatus()">Save Status Change</button>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <button class="btn-save-status" onclick="saveStatus()">Save Status Change</button>
+      </div>
     </div>
   ` : `<div style="margin-bottom:18px"><span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--mist)">Status: </span><span class="status-badge ${STATUS_CLASS[t.status]}">${STATUS_LABELS[t.status]}</span></div>`;
 
   // Log
-  const logHtml=(t.changeLog&&t.changeLog.length)?t.changeLog.map(l=>`<div class="log-entry"><span class="log-time">${new Date(l.time).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</span><span class="log-user">${l.user}</span><span class="log-desc">${l.desc}</span></div>`).join(''):`<p class="log-empty">No changes logged yet.</p>`;
+  const logHtml=buildLogHtml(t);
 
   document.getElementById('modal-body').innerHTML=`
     ${isLocked?'<div class="locked-banner">🔒 This ticket is completed and archived. Read-only.</div>':''}
@@ -895,7 +916,17 @@ function openTicket(id) {
     </div>
     <div class="modal-fields">${fields}</div>
     ${statusSection}
-    <div class="change-log"><h4>Change Log</h4>${logHtml}</div>
+    <div class="change-log">
+      <h4>Change Log</h4>
+      ${logHtml}
+      ${!isLocked ? `
+      <div class="comment-box" style="margin-top:14px">
+        <textarea id="comment-input" placeholder="Add a comment or note to this ticket..."></textarea>
+        <div class="comment-actions">
+          <button class="btn-add-comment" onclick="addComment()">Add Comment</button>
+        </div>
+      </div>` : ''}
+    </div>
   `;
   document.getElementById('ticket-modal').classList.add('show');
 }
@@ -916,6 +947,12 @@ function saveStatus() {
   if(!t.changeLog) t.changeLog=[];
   t.changeLog.push({user:SESSION.username, time:new Date().toISOString(), desc:`Status changed from "${STATUS_LABELS[old]}" to "${STATUS_LABELS[pendingStatus]}"`});
 
+  // Attach optional comment with status change
+  const commentEl=document.getElementById('comment-input');
+  if(commentEl && commentEl.value.trim()) {
+    t.changeLog.push({user:SESSION.username, time:new Date().toISOString(), desc:commentEl.value.trim(), isComment:true});
+  }
+
   if(pendingStatus==='completed') {
     t.archived=true;
     t.changeLog.push({user:SESSION.username, time:new Date().toISOString(), desc:'Ticket completed and moved to archive.'});
@@ -923,6 +960,57 @@ function saveStatus() {
   subs[idx]=t; saveSubs(subs);
   closeModal(); updateDashboard();
   if(t.archived) updateArchive();
+}
+
+function addComment() {
+  if(!openTicketId) return;
+  const commentEl=document.getElementById('comment-input');
+  const text=commentEl?commentEl.value.trim():'';
+  if(!text) { commentEl.style.borderColor='var(--fire)'; setTimeout(()=>commentEl.style.borderColor='',2000); return; }
+
+  const subs=getSubs(), idx=subs.findIndex(s=>s.id===openTicketId);
+  if(idx===-1) return;
+  const t=subs[idx];
+  if(!t.changeLog) t.changeLog=[];
+  t.changeLog.push({user:SESSION.username, time:new Date().toISOString(), desc:text, isComment:true});
+  subs[idx]=t; saveSubs(subs);
+
+  // Refresh the log display in place without closing modal
+  const logHtml=buildLogHtml(t);
+  const logSection=document.querySelector('.change-log');
+  if(logSection) {
+    const h4=logSection.querySelector('h4');
+    const commentBox=logSection.querySelector('.comment-box');
+    // Remove existing entries
+    [...logSection.children].forEach(c=>{ if(c!==h4&&c!==commentBox) c.remove(); });
+    // Re-insert log entries
+    const tmp=document.createElement('div');
+    tmp.innerHTML=logHtml;
+    [...tmp.children].forEach(c=>logSection.insertBefore(c,commentBox||null));
+  }
+  commentEl.value='';
+}
+
+function buildLogHtml(t) {
+  if(!t.changeLog||!t.changeLog.length) return '<p class="log-empty">No changes logged yet.</p>';
+  return t.changeLog.map(l=>`<div class="log-entry${l.isComment?' log-comment':''}">
+    <span class="log-time">${new Date(l.time).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</span>
+    <span class="log-user">${l.user}</span>
+    <span class="log-desc">${l.isComment?'💬 '+l.desc:l.desc}</span>
+  </div>`).join('');
+}
+
+function deleteTicket() {
+  if(!openTicketId) return;
+  const subs=getSubs();
+  const t=subs.find(s=>s.id===openTicketId);
+  if(!t) return;
+  if(!confirm(`Permanently delete ticket ${t.ref}? This cannot be undone.`)) return;
+  const updated=subs.filter(s=>s.id!==openTicketId);
+  saveSubs(updated);
+  closeModal();
+  updateDashboard();
+  updateArchive();
 }
 function closeModal() { document.getElementById('ticket-modal').classList.remove('show'); openTicketId=null; pendingStatus=null; }
 document.getElementById('ticket-modal').addEventListener('click', function(e){if(e.target===this)closeModal();});
@@ -983,10 +1071,10 @@ function removeUser(username) {
 // Fill in your keys from emailjs.com to enable emails.
 // ===================================================
 const EMAILJS_CONFIG = {
-  publicKey:      'sKwiCAKKNZTCW6SuQ',       // EmailJS → Account → API Keys
-  serviceId:      'service_urx6h07',       // EmailJS → Email Services
-  templateId:     'template_cg5oxeo',      // EmailJS → Email Templates
-  inspectorEmail: 'alexander.vergo@gmail.com',// Fire inspector's email address
+  publicKey:      'YOUR_PUBLIC_KEY',       // EmailJS → Account → API Keys
+  serviceId:      'YOUR_SERVICE_ID',       // EmailJS → Email Services
+  templateId:     'YOUR_TEMPLATE_ID',      // EmailJS → Email Templates
+  inspectorEmail: 'inspector@yourdept.gov',// Fire inspector's email address
 };
 
 if (EMAILJS_CONFIG.publicKey !== 'YOUR_PUBLIC_KEY') {
