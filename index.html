@@ -854,8 +854,17 @@ async function doLogin() {
   // Always fetch fresh from Sheets on login
   await usersGetAll();
 
+  // Bootstrap admin if sheet is empty
+  if (USERS_CACHE.length === 0) {
+    const adminHash = await sha256(DEFAULTS[0].pw);
+    await userCreate({ username: DEFAULTS[0].username, fullName: DEFAULTS[0].fullName, role: 'admin', dept: DEFAULTS[0].dept, pwHash: adminHash });
+    await usersGetAll();
+  }
+
   const hash = await sha256(password);
   const user = USERS_CACHE.find(u => u.username === username);
+
+  console.log('Login attempt:', username, '| Users loaded:', USERS_CACHE.length, '| Match:', !!user, '| Hash match:', user ? user.pwHash === hash : false);
 
   if (!user || user.pwHash !== hash) {
     if (!locks[username]) locks[username] = {count:0, until:0};
