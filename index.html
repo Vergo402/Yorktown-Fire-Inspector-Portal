@@ -851,11 +851,22 @@ async function doLogin() {
 
   btn.disabled = true; btn.textContent = 'Signing in...';
 
-  // Always fetch fresh from Sheets on login
-  await usersGetAll();
+  // Fetch users from Sheets with timeout protection
+  try {
+    await Promise.race([
+      usersGetAll(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+    ]);
+  } catch(e) {
+    errEl.textContent = 'Could not reach server. Check your connection and try again.';
+    errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Sign In';
+    return;
+  }
 
-  // Bootstrap admin if sheet is empty
+  // Bootstrap admin if Users sheet is empty (first-time setup)
   if (USERS_CACHE.length === 0) {
+    btn.textContent = 'Setting up...';
     const adminHash = await sha256(DEFAULTS[0].pw);
     await userCreate({ username: DEFAULTS[0].username, fullName: DEFAULTS[0].fullName, role: 'admin', dept: DEFAULTS[0].dept, pwHash: adminHash });
     await usersGetAll();
@@ -864,7 +875,7 @@ async function doLogin() {
   const hash = await sha256(password);
   const user = USERS_CACHE.find(u => u.username === username);
 
-  console.log('Login attempt:', username, '| Users loaded:', USERS_CACHE.length, '| Match:', !!user, '| Hash match:', user ? user.pwHash === hash : false);
+  console.log('Login debug | users in cache:', USERS_CACHE.length, '| user found:', !!user, '| hash match:', user ? user.pwHash === hash : 'n/a');
 
   if (!user || user.pwHash !== hash) {
     if (!locks[username]) locks[username] = {count:0, until:0};
