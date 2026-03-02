@@ -786,6 +786,8 @@ async function sheetsDelete(id) {
 
 // Loading state helpers
 function showLoading(msg = 'Loading...') {
+  // Never show overlay if login screen is still visible
+  if (!SESSION) return;
   let el = document.getElementById('loading-overlay');
   if (!el) {
     el = document.createElement('div');
@@ -852,13 +854,14 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Signing in...';
 
   // Fetch users from Sheets with timeout protection
+  let fetchOk = false;
   try {
     await Promise.race([
-      usersGetAll(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+      usersGetAll().then(() => { fetchOk = true; }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000))
     ]);
   } catch(e) {
-    errEl.textContent = 'Could not reach server. Check your connection and try again.';
+    errEl.textContent = 'Could not reach server. Check your internet connection and try again.';
     errEl.classList.add('show');
     btn.disabled = false; btn.textContent = 'Sign In';
     return;
@@ -866,10 +869,17 @@ async function doLogin() {
 
   // Bootstrap admin if Users sheet is empty (first-time setup)
   if (USERS_CACHE.length === 0) {
-    btn.textContent = 'Setting up...';
-    const adminHash = await sha256(DEFAULTS[0].pw);
-    await userCreate({ username: DEFAULTS[0].username, fullName: DEFAULTS[0].fullName, role: 'admin', dept: DEFAULTS[0].dept, pwHash: adminHash });
-    await usersGetAll();
+    btn.textContent = 'First-time setup...';
+    try {
+      const adminHash = await sha256(DEFAULTS[0].pw);
+      await userCreate({ username: DEFAULTS[0].username, fullName: DEFAULTS[0].fullName, role: 'admin', dept: DEFAULTS[0].dept, pwHash: adminHash });
+      await usersGetAll();
+    } catch(e) {
+      errEl.textContent = 'Setup failed. Please check Apps Script deployment.';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Sign In';
+      return;
+    }
   }
 
   const hash = await sha256(password);
