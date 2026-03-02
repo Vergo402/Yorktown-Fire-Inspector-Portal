@@ -730,19 +730,18 @@ async function sheetsRequest(action, payload = {}) {
     console.warn('Sheets not configured.');
     return null;
   }
+  const body = JSON.stringify({ action, ...payload });
+  const url = SHEETS_URL + '?payload=' + encodeURIComponent(body);
   try {
-    // Apps Script requires no-cors for cross-origin POST, so we use a form submission
-    // approach via a hidden iframe for writes, and JSONP-style GET for reads.
-    // Most reliable: encode payload as query param on a GET request (Apps Script handles both)
-    const body = JSON.stringify({ action, ...payload });
-    const url = SHEETS_URL + '?payload=' + encodeURIComponent(body);
     const res = await fetch(url, {
       method: 'GET',
       redirect: 'follow',
+      credentials: 'omit',
+      cache: 'no-store',
     });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    // Strip any JSONP wrapper or BOM
-    const clean = text.replace(/^\)\]\}'\n/, '').trim();
+    const clean = text.trim().replace(/^[^{[]*/, ''); // strip any prefix garbage
     return JSON.parse(clean);
   } catch (err) {
     console.error('Sheets request failed:', err);
