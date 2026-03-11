@@ -324,6 +324,20 @@
   .btn-save-profile { background: var(--fire); border: none; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 12px 28px; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: background 0.2s; }
   .btn-save-profile:hover { background: var(--fire-dark); }
   @media (max-width: 600px) { .profile-fields { grid-template-columns: 1fr; } .profile-card { padding: 20px 16px; } }
+
+  .vt-category-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fog);
+    padding: 10px 0 4px;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--steel);
+    margin-top: 4px;
+  }
+  .vt-category-label:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
 </style>
 </head>
 <body>
@@ -468,21 +482,35 @@
         <div class="field field-full"><label>Property Address <span class="req">*</span></label><input type="text" name="address" placeholder="123 Main St, Yorktown Heights, NY 10598" required></div>
         <div class="field"><label>Property Name / Business</label><input type="text" name="property_name" placeholder="ABC Commercial Plaza"></div>
         <div class="field"><label>Owner / Responsible Party — Name</label><input type="text" name="owner" placeholder="Property owner or manager name"></div>
-        <div class="field"><label>Owner / Responsible Party — Phone or Email</label><input type="text" name="owner_contact" placeholder="(914) 555-0100 or email@example.com"></div>
+        <div class="field"><label>Owner / Responsible Party — Phone</label><input type="tel" name="owner_phone" placeholder="(914) 555-0100"></div>
+        <div class="field"><label>Owner / Responsible Party — Email</label><input type="email" name="owner_email" placeholder="owner@example.com"></div>
         <div class="field field-full"><label>Violation Type(s) <span class="req">*</span></label>
           <div class="multi-check-group" id="violation-types">
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Blocked Exit / Egress"><span class="check-box"></span><span class="check-label">Blocked Exit / Egress</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Expired / Missing Extinguisher"><span class="check-box"></span><span class="check-label">Expired / Missing Extinguisher</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Sprinkler System Issue"><span class="check-box"></span><span class="check-label">Sprinkler System Issue</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Alarm System Issue"><span class="check-box"></span><span class="check-label">Alarm System Issue</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Improper Hazmat Storage"><span class="check-box"></span><span class="check-label">Improper Hazmat Storage</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Overcrowding"><span class="check-box"></span><span class="check-label">Overcrowding</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Illegal Burning / Open Flame"><span class="check-box"></span><span class="check-label">Illegal Burning / Open Flame</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Missing Exit Signage"><span class="check-box"></span><span class="check-label">Missing Exit Signage</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Electrical Hazard"><span class="check-box"></span><span class="check-label">Electrical Hazard</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Hoarding / Storage Hazard"><span class="check-box"></span><span class="check-label">Hoarding / Storage Hazard</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Knox Box Issue"><span class="check-box"></span><span class="check-label">Knox Box Issue</span></label>
-            <label class="multi-check-item"><input type="checkbox" name="vt" value="Construction Without Permit"><span class="check-box"></span><span class="check-label">Construction Without Permit</span></label>
+            <div class="vt-category-label">🔴 Critical</div>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Blocked Exit / Egress" onchange="autoSev(this,'critical')"><span class="check-box"></span><span class="check-label">Blocked Exit / Egress</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Overcrowding" onchange="autoSev(this,'critical')"><span class="check-box"></span><span class="check-label">Overcrowding</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Illegal Burning / Open Flame" onchange="autoSev(this,'critical')"><span class="check-box"></span><span class="check-label">Illegal Burning / Open Flame</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Immediately Dangerous to Life Hazard" onchange="autoSev(this,'critical')"><span class="check-box"></span><span class="check-label">Immediately Dangerous to Life Hazard</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Improperly Stored / Excessive Combustibles" onchange="autoSev(this,'critical')"><span class="check-box"></span><span class="check-label">Improperly Stored / Excessive Combustibles</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Locked or Obstructed Fire Escape / Stairwell" onchange="autoSev(this,'critical')"><span class="check-box"></span><span class="check-label">Locked or Obstructed Fire Escape / Stairwell</span></label>
+            <div class="vt-category-label">🟠 High</div>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Hoarding / Storage Hazard" onchange="autoSev(this,'high')"><span class="check-box"></span><span class="check-label">Hoarding / Storage Hazard</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Improper Hazmat Storage" onchange="autoSev(this,'high')"><span class="check-box"></span><span class="check-label">Improper Hazmat Storage</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Sprinkler System Issue" onchange="autoSev(this,'high')"><span class="check-box"></span><span class="check-label">Sprinkler System Issue</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Fire Alarm Issue" onchange="autoSev(this,'high')"><span class="check-box"></span><span class="check-label">Fire Alarm Issue</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Electrical Hazard" onchange="autoSev(this,'high')"><span class="check-box"></span><span class="check-label">Electrical Hazard</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Fuel Storage Violation (Propane / Gasoline)" onchange="autoSev(this,'high')"><span class="check-box"></span><span class="check-label">Fuel Storage Violation (Propane / Gasoline)</span></label>
+            <div class="vt-category-label">🟡 Medium</div>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Blocked or Damaged FDC / Hydrant" onchange="autoSev(this,'medium')"><span class="check-box"></span><span class="check-label">Blocked or Damaged FDC / Hydrant</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Construction Without Permit" onchange="autoSev(this,'medium')"><span class="check-box"></span><span class="check-label">Construction Without Permit</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Missing or Non-Functional Emergency Lighting" onchange="autoSev(this,'medium')"><span class="check-box"></span><span class="check-label">Missing or Non-Functional Emergency Lighting</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Cooking Suppression System Issue (Type I Hood)" onchange="autoSev(this,'medium')"><span class="check-box"></span><span class="check-label">Cooking Suppression System Issue (Type I Hood)</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Non-Compliant or Missing Fire Separation / Fire Door" onchange="autoSev(this,'medium')"><span class="check-box"></span><span class="check-label">Non-Compliant or Missing Fire Separation / Fire Door</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Unauthorized Change of Occupancy" onchange="autoSev(this,'medium')"><span class="check-box"></span><span class="check-label">Unauthorized Change of Occupancy</span></label>
+            <div class="vt-category-label">🟢 Low</div>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Expired / Missing Extinguisher" onchange="autoSev(this,'low')"><span class="check-box"></span><span class="check-label">Expired / Missing Extinguisher</span></label>
+            <label class="multi-check-item"><input type="checkbox" name="vt" value="Missing Exit Signage" onchange="autoSev(this,'low')"><span class="check-box"></span><span class="check-label">Missing Exit Signage</span></label>
+            <div class="vt-category-label">⚪ Other (submitter sets priority)</div>
             <label class="multi-check-item"><input type="checkbox" name="vt" value="Other" onclick="handleOtherCheck(this)"><span class="check-box"></span><span class="check-label">Other</span></label>
           </div>
           <div class="other-input-wrap" id="viol-other-wrap">
@@ -537,8 +565,13 @@
       <div class="form-grid">
         <div class="field field-full"><label>Request Type <span class="req">*</span></label>
           <div class="radio-group" id="knox-radio-group">
-            <label class="radio-option"><input type="radio" name="knox_type" value="No Knox Box" required onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>No Knox Box</label>
-            <label class="radio-option"><input type="radio" name="knox_type" value="Property Key Change" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Property Key Change</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Required But Not Installed" required onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Required But Not Installed</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Key(s) Missing or Incorrect" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Key(s) Missing or Incorrect</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Inaccessible / Obstructed" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Inaccessible / Obstructed</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Damaged or Vandalized" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Damaged or Vandalized</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Lock Mechanism Defective" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Lock Mechanism Defective</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Keys Out of Date" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Keys Out of Date</label>
+            <label class="radio-option"><input type="radio" name="knox_type" value="Knox Box Installed in Wrong Location" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Knox Box Installed in Wrong Location</label>
             <label class="radio-option"><input type="radio" name="knox_type" value="Box Malfunction / Repair" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Box Malfunction / Repair</label>
             <label class="radio-option"><input type="radio" name="knox_type" value="Other" onclick="handleOtherRadio(this,'knox')"><span class="radio-dot"></span>Other</label>
           </div>
@@ -549,10 +582,10 @@
         <div class="field field-full"><label>Property Address <span class="req">*</span></label><input type="text" name="address" placeholder="123 Main St, Yorktown Heights, NY 10598" required></div>
         <div class="field"><label>Property Name / Business</label><input type="text" name="property_name" placeholder="ABC Commercial Plaza"></div>
         <div class="field"><label>Knox Box Location / Mount Point</label><input type="text" name="box_location" placeholder="e.g. Front entrance, left of main door, 5ft AFF"></div>
-        <div class="field field-full"><label>Keys / Access Items to Include</label><textarea name="key_list" placeholder="List keys to be stored: e.g. Main lobby, elevator, mechanical room, stairwell A..."></textarea></div>
-        <div class="field"><label>Emergency Contact Name <span class="req">*</span></label><input type="text" name="owner_name" placeholder="Full name" required></div>
-        <div class="field"><label>Emergency Contact Phone <span class="req">*</span></label><input type="tel" name="owner_phone" placeholder="(914) 555-0100" required></div>
-        <div class="field"><label>Emergency Contact Email</label><input type="email" name="owner_email" placeholder="contact@property.com"></div>
+        <div class="field field-full"><label>Keys / Access Items to Include <span class="req">*</span></label><textarea name="key_list" placeholder="List keys to be stored: e.g. Main lobby, elevator, mechanical room, stairwell A..." required></textarea></div>
+        <div class="field"><label>Business / Occupant Emergency Contact Name <span class="req">*</span></label><input type="text" name="owner_name" placeholder="Full name" required></div>
+        <div class="field"><label>Business / Occupant Emergency Contact Phone <span class="req">*</span></label><input type="tel" name="owner_phone" placeholder="(914) 555-0100" required></div>
+        <div class="field"><label>Business / Occupant Emergency Contact Email</label><input type="email" name="owner_email" placeholder="contact@property.com"></div>
         <div class="field"><label>Preferred Service Date</label><input type="date" name="pref_date"></div>
         <div class="field field-full"><label>Reason / Additional Notes</label><textarea name="notes" placeholder="New construction, emergency access issue, personnel change..."></textarea></div>
         <div class="field"><label>Requesting Officer <span class="req">*</span></label><input type="text" name="submitted_by" id="knox-sub" placeholder="FF. Jane Doe" required></div>
@@ -1013,6 +1046,26 @@ function setSev(btn, type) {
   document.getElementById('sev-'+type).value = btn.dataset.sev;
 }
 
+const SEV_RANK = {critical:4, high:3, medium:2, low:1};
+function autoSev(checkbox, sev) {
+  // Find the highest severity among all checked boxes that have a data-sev
+  const allChecked = [...document.querySelectorAll('#violation-types input[name="vt"]:checked')];
+  // Map each checked value back to its sev via the onchange attr
+  let highest = 0;
+  document.querySelectorAll('#violation-types input[name="vt"]').forEach(cb => {
+    if (!cb.checked) return;
+    const fn = cb.getAttribute('onchange') || '';
+    const m = fn.match(/autoSev\(this,'(\w+)'\)/);
+    if (m && SEV_RANK[m[1]] > highest) highest = SEV_RANK[m[1]];
+  });
+  if (highest > 0) {
+    const sevName = Object.keys(SEV_RANK).find(k => SEV_RANK[k] === highest);
+    const btn = document.querySelector('.severity-btn[data-sev="' + sevName + '"]');
+    if (btn) setSev(btn, 'violation');
+  }
+}
+
+
 async function submitForm(e, type) {
   e.preventDefault();
   const form = e.target;
@@ -1202,7 +1255,7 @@ function openTicket(id) {
   const ff=(label,val)=>val?`<div class="mf full"><label>${label}</label><p>${val}</p></div>`:'';
   let fields = f('Reference #',t.ref)+f('Department',t.department)+f('Submitted By',t.submittedByName||t.submitted_by)+f('Date Submitted',new Date(t.timestamp).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}))+ff('Property Address',t.address)+f('Property Name',t.property_name);
   if(t.type==='inspection'){fields+=f('Contact Name',t.contact_name)+f('Contact Phone',t.contact_phone)+f('Contact Email',t.contact_email)+f('Preferred Date',t.pref_date)+f('Preferred Time',t.pref_time)+f('Alternate Date',t.alt_date)+ff('Notes',t.notes);}
-  else if(t.type==='violation'){fields+=ff('Violation Type(s)',t.violation_type)+f('Date Observed',t.observed_date)+f('Time Observed',t.observed_time)+f('Severity',t.severity?t.severity.toUpperCase():'')+f('Owner / Responsible Party',t.owner)+f('Owner Contact',t.owner_contact)+f('Reporting Officer',t.submitted_by||t.submittedByName)+f('Officer Phone',t.contact_phone)+f('Officer Email',t.contact_email)+ff('Description',t.description)+ff('Immediate Action Taken',t.action_taken);}
+  else if(t.type==='violation'){fields+=ff('Violation Type(s)',t.violation_type)+f('Date Observed',t.observed_date)+f('Time Observed',t.observed_time)+f('Severity',t.severity?t.severity.toUpperCase():'')+f('Owner / Responsible Party',t.owner)+f('Owner Phone',t.owner_phone)+f('Owner Email',t.owner_email)+f('Reporting Officer',t.submitted_by||t.submittedByName)+f('Officer Phone',t.contact_phone)+f('Officer Email',t.contact_email)+ff('Description',t.description)+ff('Immediate Action Taken',t.action_taken);}
   else if(t.type==='knox'){fields+=f('Request Type',t.knox_type)+f('Box Location',t.box_location)+f('Emergency Contact',t.owner_name)+f('Contact Phone',t.owner_phone)+f('Contact Email',t.owner_email)+f('Preferred Service Date',t.pref_date)+ff('Keys / Access Items',t.key_list)+ff('Notes',t.notes)+f('Requesting Officer',t.submitted_by||t.submittedByName)+f('Officer Contact',t.officer_contact);}
 
   // Status section
@@ -1526,7 +1579,8 @@ async function sendSubmissionEmail(data) {
     if (data.observed_date)  details += 'Date Observed: ' + data.observed_date + '\n';
     if (data.observed_time)  details += 'Time Observed: ' + data.observed_time + '\n';
     if (data.owner)          details += 'Owner / Responsible Party: ' + data.owner + '\n';
-    if (data.owner_contact)  details += 'Owner Contact: ' + data.owner_contact + '\n';
+    if (data.owner_phone)   details += 'Owner Phone: ' + data.owner_phone + '\n';
+    if (data.owner_email)   details += 'Owner Email: ' + data.owner_email + '\n';
     if (data.contact_phone)  details += 'Reporting Officer Phone: ' + data.contact_phone + '\n';
     if (data.contact_email)  details += 'Reporting Officer Email: ' + data.contact_email + '\n';
     if (data.description)    details += '\nDescription:\n' + data.description + '\n';
