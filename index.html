@@ -981,7 +981,7 @@ function showView(v) {
   const mob = document.getElementById('mob-'+v); if(mob) mob.classList.add('active');
   if(v==='dashboard') loadAndRenderDashboard();
   if(v==='archive') loadAndRenderArchive();
-  if(v==='users') renderUsers();
+  if(v==='users') { if(SESSION && SESSION.role==='admin') renderUsers(); else showView('submit'); return; }
   if(v==='profile') loadProfile();
 }
 
@@ -1339,6 +1339,7 @@ function exportCSV() {
 
 // === USERS ===
 async function renderUsers() {
+  if (!SESSION || SESSION.role !== 'admin') { showView('submit'); return; }
   showLoading('Loading users...');
   await usersGetAll();
   hideLoading();
