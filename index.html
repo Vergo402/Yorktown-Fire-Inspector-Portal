@@ -405,12 +405,8 @@
 <div id="view-submit">
   <div class="hero">
     <h1>Submit a <em>Request</em></h1>
-    <p>Select your department and request type. All submissions are tracked.</p>
-    <span class="dept-label">Select Your Department</span>
-    <div class="dept-selector">
-      <button class="dept-btn" onclick="selectDept(this,'Yorktown Heights FD')" data-dept="Yorktown Heights FD">🚒 Yorktown Heights FD</button>
-      <button class="dept-btn" onclick="selectDept(this,'Lake Mohegan FD')" data-dept="Lake Mohegan FD">🚒 Lake Mohegan FD</button>
-    </div>
+    <p>Select a request type below. Your submission will be assigned to your department.</p>
+    <div style="margin-top:8px"><span class="dept-label">Filing as: <strong id="hero-dept-label" style="color:var(--light);letter-spacing:0;text-transform:none"></strong></span></div>
   </div>
   <div class="section-title">Request Type</div>
   <div class="form-type-grid">
@@ -967,13 +963,11 @@ function showApp() {
     document.getElementById('tab-users').style.display = '';
     document.getElementById('mob-users').style.display = '';
   }
-  if (SESSION.role !== 'admin') {
-    document.querySelectorAll('.dept-btn').forEach(b => {
-      b.disabled = true;
-      if (b.dataset.dept === SESSION.dept) { b.classList.add('active'); selectedDept = SESSION.dept; }
-    });
-    document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = SESSION.dept; b.style.display = 'block'; });
-  }
+  // Always set dept from session profile
+  selectedDept = SESSION.dept;
+  document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = SESSION.dept; b.style.display = 'block'; });
+  const heroLabel = document.getElementById('hero-dept-label');
+  if (heroLabel) heroLabel.textContent = '🚒 ' + SESSION.dept;
   ['insp-sub','viol-sub','knox-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
   showView('submit');
 }
@@ -992,14 +986,7 @@ function showView(v) {
 }
 
 // === FORMS ===
-function selectDept(btn, dept) {
-  selectedDept = dept;
-  document.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = dept; b.style.display='block'; });
-}
 function selectFormType(type) {
-  if (!selectedDept) { alert('Please select your department first.'); return; }
   document.querySelectorAll('.form-type-card').forEach(c => c.classList.remove('active'));
   document.querySelector('.type-'+type).classList.add('active');
   document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
@@ -1449,8 +1436,12 @@ async function saveProfile() {
 
   SESSION.fullName = fullName;
   SESSION.dept = dept;
+  selectedDept = dept;
   sessionStorage.setItem('fp_sess', JSON.stringify(SESSION));
   document.getElementById('session-label').textContent = SESSION.fullName + ' (' + SESSION.username + ')';
+  const heroLabel = document.getElementById('hero-dept-label');
+  if (heroLabel) heroLabel.textContent = '🚒 ' + dept;
+  document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = dept; });
   ['insp-sub','viol-sub','knox-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
   const idx = USERS_CACHE.findIndex(u => u.username === SESSION.username);
   if (idx >= 0) USERS_CACHE[idx] = { ...USERS_CACHE[idx], ...updates };
