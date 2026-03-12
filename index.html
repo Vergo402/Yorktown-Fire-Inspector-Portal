@@ -6,7 +6,91 @@
 <title>Town of Yorktown - Fire Department Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+// === HELP / FEEDBACK ===
+function selectHelpType(sub) {
+  document.querySelectorAll('#view-help .form-type-card').forEach(c => c.classList.remove('active'));
+  const card = document.querySelector('#view-help .form-type-card[onclick="selectHelpType('' + sub + '')"]');
+  if (card) card.classList.add('active');
+  ['support','idea'].forEach(s => {
+    const p = document.getElementById('form-help-' + s);
+    if (p) p.classList.toggle('active', s === sub);
+  });
+  document.getElementById('form-help-' + sub).scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function resetHelpForm(sub) {
+  const f = document.getElementById('f-help-' + sub);
+  if (f) f.reset();
+  const nameEl = document.getElementById('help-' + sub + '-sub');
+  if (nameEl && SESSION) nameEl.value = SESSION.fullName;
+  const emailEls = f ? f.querySelectorAll('input[name="help_reply_email"]') : [];
+  emailEls.forEach(el => { el.value = SESSION ? SESSION.email || '' : ''; });
+}
+
+async function submitHelpForm(e, sub) {
+  e.preventDefault();
+  const f = document.getElementById('f-help-' + sub);
+  const data = Object.fromEntries(new FormData(f).entries());
+  data.type = sub;
+  data.department = SESSION ? SESSION.dept : '';
+  data.submittedByName = SESSION ? SESSION.fullName : '';
+  data.timestamp = new Date().toISOString();
+
+  const typeLabel = sub === 'support' ? 'Support Request' : 'Change Idea';
+  const icon = sub === 'support' ? '🛠️' : '💡';
+
+  showLoading('Submitting ' + typeLabel + '...');
+  const ok = await sheetsCreate(data);
+  hideLoading();
+
+  if (!ok) { alert('Submission failed. Please try again.'); return; }
+
+  // Email notification
+  try {
+    const details =
+      'Type: ' + typeLabel + '\n' +
+      'Category: ' + (data.help_category || '—') + '\n' +
+      'Urgency / Priority: ' + (data.help_urgency || '—') + '\n' +
+      'Submitted by: ' + (data.submittedByName || '—') + ' (' + data.department + ')\n' +
+      'Reply Email: ' + (data.help_reply_email || '—') + '\n\n' +
+      'Subject: ' + (data.help_subject || '—') + '\n\n' +
+      'Description:\n' + (data.help_description || '—');
+
+    await Promise.all(EMAILJS_CONFIG.notifyEmails.map(addr =>
+      emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+        to_email:        addr,
+        reply_to:        data.help_reply_email || '',
+        subject:         '[' + typeLabel + '] ' + (data.help_subject || '—') + ' — ' + data.department,
+        ref_number:      '—',
+        submission_type: typeLabel,
+        department:      data.department,
+        submitted_by:    data.submittedByName,
+        address:         '—',
+        submitted_at:    new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}),
+        full_details:    details,
+      })
+    ));
+  } catch(err) { console.warn('Help email failed:', err); }
+
+  resetHelpForm(sub);
+  document.querySelectorAll('#view-help .form-type-card').forEach(c => c.classList.remove('active'));
+  ['support','idea'].forEach(s => { const p = document.getElementById('form-help-' + s); if(p) p.classList.remove('active'); });
+
+  // Success toast
+  const icons = {inspection:'🏢', violation:'⚠️', knox:'🔑', support:'🛠️', idea:'💡'};
+  const titles = {inspection:'Inspection Requested!', violation:'Violation Filed!', knox:'Knox Request Submitted!', support:'Support Request Submitted!', idea:'Idea Submitted!'};
+  const sc = document.getElementById('success-card');
+  if (sc) {
+    sc.querySelector('.success-icon').textContent = icon;
+    sc.querySelector('.success-title').textContent = titles[sub] || 'Submitted!';
+    sc.querySelector('.success-msg').textContent = 'Your ' + typeLabel.toLowerCase() + ' has been sent. You'll hear back at ' + (data.help_reply_email || 'your email') + '.';
+    document.getElementById('success-overlay').style.display = 'flex';
+    setTimeout(() => { document.getElementById('success-overlay').style.display = 'none'; }, 5000);
+  }
+}
+
+</script>
 <style>
   :root {
     --fire: #E8321A; --fire-dark: #B82510; --coal: #111214; --ash: #1C1E22;
@@ -83,6 +167,8 @@
   .form-type-card.active.type-inspection { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), 0 8px 24px rgba(59,130,246,0.15); }
   .form-type-card.active.type-violation { border-color: var(--fire); box-shadow: 0 0 0 1px var(--fire), 0 8px 24px rgba(232,50,26,0.15); }
   .form-type-card.active.type-knox { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 8px 24px rgba(245,158,11,0.15); }
+  .form-type-card.active.type-help { border-color: #10B981; box-shadow: 0 0 0 1px #10B981, 0 8px 24px rgba(16,185,129,0.15); }
+  .type-badge.help { background: rgba(16,185,129,0.15); color: #10B981; }
   .card-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
   .card-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px; }
   .card-desc { font-size: 0.8rem; color: var(--mist); line-height: 1.5; }
@@ -400,6 +486,7 @@
       <button class="nav-tab" onclick="showView('archive')" id="tab-archive">Archive</button>
       <button class="nav-tab" onclick="showView('users')" id="tab-users" style="display:none">Users</button>
       <button class="nav-tab" onclick="showView('profile')" id="tab-profile">Profile</button>
+      <button class="nav-tab" onclick="showView('help')" id="tab-help">Help</button>
     </nav>
     <div class="header-right">
       <div class="user-pill"><div class="role-dot" id="role-dot"></div><span id="session-label">—</span></div>
@@ -682,6 +769,105 @@
   </div>
 </div>
 
+
+<!-- HELP / FEEDBACK -->
+<div id="view-help" style="display:none">
+  <div class="hero">
+    <h1>Help &amp; <em>Feedback</em></h1>
+    <p>Submit a support request or share an idea to improve the portal.</p>
+  </div>
+  <div class="section-title">Request Type</div>
+  <div class="form-type-grid">
+    <div class="form-type-card type-help" onclick="selectHelpType('support')">
+      <span class="card-icon">🛠️</span>
+      <div class="card-title">Support Request</div>
+      <div class="card-desc">Report a bug, login issue, or anything that isn't working correctly.</div>
+    </div>
+    <div class="form-type-card type-help" onclick="selectHelpType('idea')">
+      <span class="card-icon">💡</span>
+      <div class="card-title">Submit a Change Idea</div>
+      <div class="card-desc">Suggest a new feature, workflow improvement, or design change.</div>
+    </div>
+  </div>
+
+  <!-- SUPPORT FORM -->
+  <div id="form-help-support" class="form-panel" style="margin-top:24px">
+    <div class="form-header">
+      <div class="form-header-icon" style="background:rgba(16,185,129,0.12);color:#10B981;font-size:1.6rem;width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center">🛠️</div>
+      <div><h2>Support Request</h2><p>Report an issue or get help</p></div>
+      <div class="dept-badge" id="badge-help-support"></div>
+    </div>
+    <form id="f-help-support" onsubmit="submitHelpForm(event,'support')">
+      <div class="form-grid">
+        <div class="field field-full"><label>Issue Summary <span class="req">*</span></label><input type="text" name="help_subject" placeholder="Brief description of the problem" required></div>
+        <div class="field"><label>Category</label>
+          <select name="help_category" style="background:var(--smoke);border:1.5px solid var(--steel);border-radius:8px;color:var(--white);font-family:'Barlow',sans-serif;font-size:1rem;padding:12px 14px;outline:none;width:100%;appearance:none;">
+            <option value="Login / Access">Login / Access</option>
+            <option value="Form / Submission Issue">Form / Submission Issue</option>
+            <option value="Dashboard / Data Issue">Dashboard / Data Issue</option>
+            <option value="Email Notification Issue">Email Notification Issue</option>
+            <option value="Display / Visual Bug">Display / Visual Bug</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Urgency</label>
+          <select name="help_urgency" style="background:var(--smoke);border:1.5px solid var(--steel);border-radius:8px;color:var(--white);font-family:'Barlow',sans-serif;font-size:1rem;padding:12px 14px;outline:none;width:100%;appearance:none;">
+            <option value="Low — informational">Low — informational</option>
+            <option value="Medium — affecting my work">Medium — affecting my work</option>
+            <option value="High — blocking me completely">High — blocking me completely</option>
+          </select>
+        </div>
+        <div class="field field-full"><label>Description <span class="req">*</span></label><textarea name="help_description" placeholder="Describe the issue in detail: what you were doing, what happened, what you expected..." required style="min-height:110px"></textarea></div>
+        <div class="field"><label>Your Name</label><input type="text" name="submitted_by" id="help-support-sub" placeholder="FF. Jane Doe"></div>
+        <div class="field"><label>Your Email</label><input type="email" name="help_reply_email" placeholder="your@email.com"></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-reset" onclick="resetHelpForm('support')">Clear</button>
+        <button type="submit" class="btn-submit"><span>Submit Support Request</span><span>→</span></button>
+      </div>
+    </form>
+  </div>
+
+  <!-- CHANGE IDEA FORM -->
+  <div id="form-help-idea" class="form-panel" style="margin-top:24px">
+    <div class="form-header">
+      <div class="form-header-icon" style="background:rgba(16,185,129,0.12);color:#10B981;font-size:1.6rem;width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center">💡</div>
+      <div><h2>Submit a Change Idea</h2><p>Suggest an improvement to the portal</p></div>
+      <div class="dept-badge" id="badge-help-idea"></div>
+    </div>
+    <form id="f-help-idea" onsubmit="submitHelpForm(event,'idea')">
+      <div class="form-grid">
+        <div class="field field-full"><label>Idea Title <span class="req">*</span></label><input type="text" name="help_subject" placeholder="Short title for your idea" required></div>
+        <div class="field"><label>Area</label>
+          <select name="help_category" style="background:var(--smoke);border:1.5px solid var(--steel);border-radius:8px;color:var(--white);font-family:'Barlow',sans-serif;font-size:1rem;padding:12px 14px;outline:none;width:100%;appearance:none;">
+            <option value="Submit / Forms">Submit / Forms</option>
+            <option value="Dashboard / Reporting">Dashboard / Reporting</option>
+            <option value="User Management">User Management</option>
+            <option value="Notifications / Email">Notifications / Email</option>
+            <option value="Mobile Experience">Mobile Experience</option>
+            <option value="New Feature">New Feature</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Priority (your view)</label>
+          <select name="help_urgency" style="background:var(--smoke);border:1.5px solid var(--steel);border-radius:8px;color:var(--white);font-family:'Barlow',sans-serif;font-size:1rem;padding:12px 14px;outline:none;width:100%;appearance:none;">
+            <option value="Nice to have">Nice to have</option>
+            <option value="Would improve workflow">Would improve workflow</option>
+            <option value="Important — significant impact">Important — significant impact</option>
+          </select>
+        </div>
+        <div class="field field-full"><label>Description <span class="req">*</span></label><textarea name="help_description" placeholder="Describe your idea: what it would do, why it would help, and any examples..." required style="min-height:110px"></textarea></div>
+        <div class="field"><label>Your Name</label><input type="text" name="submitted_by" id="help-idea-sub" placeholder="FF. Jane Doe"></div>
+        <div class="field"><label>Your Email</label><input type="email" name="help_reply_email" placeholder="your@email.com"></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-reset" onclick="resetHelpForm('idea')">Clear</button>
+        <button type="submit" class="btn-submit"><span>Submit Idea</span><span>→</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </main>
 
 <!-- TICKET MODAL -->
@@ -880,7 +1066,7 @@ function hideLoading() {
 
 const STATUS_LABELS = {submitted:'Submitted', under_review:'Under Review', enforcement:'Enforcement Underway', completed:'Completed'};
 const STATUS_CLASS = {submitted:'s-submitted', under_review:'s-under_review', enforcement:'s-enforcement', completed:'s-completed'};
-const TYPE_LABELS = {inspection:'Inspection', violation:'Violation', knox:'Knox Box'};
+const TYPE_LABELS = {inspection:'Inspection', violation:'Violation', knox:'Knox Box', support:'Support', idea:'Change Idea'};
 
 // === INIT ===
 async function init() {
@@ -1009,16 +1195,17 @@ function showApp() {
   document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = SESSION.dept; b.style.display = 'block'; });
   const heroLabel = document.getElementById('hero-dept-label');
   if (heroLabel) heroLabel.textContent = '🚒 ' + SESSION.dept;
-  ['insp-sub','viol-sub','knox-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
+  ['insp-sub','viol-sub','knox-sub','help-support-sub','help-idea-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
   // Auto-fill officer email fields from session profile
   const _emailFields = ['contact_email_insp','contact_email_viol','contact_email_knox'];
   document.querySelectorAll('input[name="contact_email"]').forEach(el => { el.value = SESSION.email || ''; });
+  document.querySelectorAll('input[name="help_reply_email"]').forEach(el => { el.value = SESSION.email || ''; });
   showView('submit');
 }
 
 // === NAV ===
 function showView(v) {
-  ['submit','dashboard','archive','users','profile'].forEach(id => { const el=document.getElementById('view-'+id); if(el) el.style.display = id===v?'block':'none'; });
+  ['submit','dashboard','archive','users','profile','help'].forEach(id => { const el=document.getElementById('view-'+id); if(el) el.style.display = id===v?'block':'none'; });
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const at = document.getElementById('tab-'+v); if(at) at.classList.add('active');
   document.querySelectorAll('.mobile-nav-btn').forEach(t => t.classList.remove('active'));
@@ -1498,6 +1685,7 @@ async function saveProfile() {
   // Keep session in sync so email auto-fill stays current
   if (SESSION) { SESSION.email = email; sessionStorage.setItem('fp_sess', JSON.stringify(SESSION)); }
   document.querySelectorAll('input[name="contact_email"]').forEach(el => { el.value = email; });
+  document.querySelectorAll('input[name="help_reply_email"]').forEach(el => { el.value = email; });
 
   if (pw || pw2) {
     if (pw !== pw2) { showMsg('Passwords do not match.', false); return; }
@@ -1519,10 +1707,11 @@ async function saveProfile() {
   const heroLabel = document.getElementById('hero-dept-label');
   if (heroLabel) heroLabel.textContent = '🚒 ' + dept;
   document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = dept; });
-  ['insp-sub','viol-sub','knox-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
+  ['insp-sub','viol-sub','knox-sub','help-support-sub','help-idea-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
   // Auto-fill officer email fields from session profile
   const _emailFields = ['contact_email_insp','contact_email_viol','contact_email_knox'];
   document.querySelectorAll('input[name="contact_email"]').forEach(el => { el.value = SESSION.email || ''; });
+  document.querySelectorAll('input[name="help_reply_email"]').forEach(el => { el.value = SESSION.email || ''; });
   const idx = USERS_CACHE.findIndex(u => u.username === SESSION.username);
   if (idx >= 0) USERS_CACHE[idx] = { ...USERS_CACHE[idx], ...updates };
   document.getElementById('profile-avatar-display').textContent = fullName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
@@ -1793,6 +1982,7 @@ init();
   <button class="mobile-nav-btn" id="mob-archive" onclick="showView('archive')"><span class="mob-icon">🗃️</span>Archive</button>
   <button class="mobile-nav-btn" id="mob-users" onclick="showView('users')" style="display:none"><span class="mob-icon">👥</span>Users</button>
   <button class="mobile-nav-btn" id="mob-profile" onclick="showView('profile')"><span class="mob-icon">👤</span>Profile</button>
+  <button class="mobile-nav-btn" id="mob-help" onclick="showView('help')"><span class="mob-icon">💬</span>Help</button>
 </nav>
 </body>
 </html>
