@@ -6,95 +6,7 @@
 <title>Town of Yorktown - Fire Department Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
-// === HELP / FEEDBACK ===
-function selectHelpType(sub) {
-  document.querySelectorAll('#view-help .form-type-card').forEach(c => c.classList.remove('active'));
-  // Find the clicked card by iterating — avoids broken attribute selector escaping
-  document.querySelectorAll('#view-help .form-type-card').forEach(c => {
-    const oc = c.getAttribute('onclick') || '';
-    if (oc.includes("'" + sub + "'")) c.classList.add('active');
-  });
-  ['support','idea'].forEach(s => {
-    const p = document.getElementById('form-help-' + s);
-    if (p) p.classList.toggle('active', s === sub);
-  });
-  const target = document.getElementById('form-help-' + sub);
-  if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function resetHelpForm(sub) {
-  const f = document.getElementById('f-help-' + sub);
-  if (f) f.reset();
-  const nameEl = document.getElementById('help-' + sub + '-sub');
-  if (nameEl && SESSION) nameEl.value = SESSION.fullName;
-  const emailEls = f ? f.querySelectorAll('input[name="help_reply_email"]') : [];
-  emailEls.forEach(el => { el.value = SESSION ? SESSION.email || '' : ''; });
-}
-
-async function submitHelpForm(e, sub) {
-  e.preventDefault();
-  const f = document.getElementById('f-help-' + sub);
-  const data = Object.fromEntries(new FormData(f).entries());
-  data.type = sub;
-  data.department = SESSION ? SESSION.dept : '';
-  data.submittedByName = SESSION ? SESSION.fullName : '';
-  data.timestamp = new Date().toISOString();
-
-  const typeLabel = sub === 'support' ? 'Support Request' : 'Change Idea';
-  const icon = sub === 'support' ? '🛠️' : '💡';
-
-  showLoading('Submitting ' + typeLabel + '...');
-  const ok = await sheetsCreate(data);
-  hideLoading();
-
-  if (!ok) { alert('Submission failed. Please try again.'); return; }
-
-  // Email notification
-  try {
-    const details =
-      'Type: ' + typeLabel + '\n' +
-      'Category: ' + (data.help_category || '—') + '\n' +
-      'Urgency / Priority: ' + (data.help_urgency || '—') + '\n' +
-      'Submitted by: ' + (data.submittedByName || '—') + ' (' + data.department + ')\n' +
-      'Reply Email: ' + (data.help_reply_email || '—') + '\n\n' +
-      'Subject: ' + (data.help_subject || '—') + '\n\n' +
-      'Description:\n' + (data.help_description || '—');
-
-    await Promise.all(EMAILJS_CONFIG.notifyEmails.map(addr =>
-      emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
-        to_email:        addr,
-        reply_to:        data.help_reply_email || '',
-        subject:         '[' + typeLabel + '] ' + (data.help_subject || '—') + ' — ' + data.department,
-        ref_number:      '—',
-        submission_type: typeLabel,
-        department:      data.department,
-        submitted_by:    data.submittedByName,
-        address:         '—',
-        submitted_at:    new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}),
-        full_details:    details,
-      })
-    ));
-  } catch(err) { console.warn('Help email failed:', err); }
-
-  resetHelpForm(sub);
-  document.querySelectorAll('#view-help .form-type-card').forEach(c => c.classList.remove('active'));
-  ['support','idea'].forEach(s => { const p = document.getElementById('form-help-' + s); if(p) p.classList.remove('active'); });
-
-  // Success toast
-  const icons = {inspection:'🏢', violation:'⚠️', knox:'🔑', support:'🛠️', idea:'💡'};
-  const titles = {inspection:'Inspection Requested!', violation:'Violation Filed!', knox:'Knox Request Submitted!', support:'Support Request Submitted!', idea:'Idea Submitted!'};
-  const sc = document.getElementById('success-card');
-  if (sc) {
-    sc.querySelector('.success-icon').textContent = icon;
-    sc.querySelector('.success-title').textContent = titles[sub] || 'Submitted!';
-    sc.querySelector('.success-msg').textContent = 'Your ' + typeLabel.toLowerCase() + ' has been sent. You'll hear back at ' + (data.help_reply_email || 'your email') + '.';
-    document.getElementById('success-overlay').style.display = 'flex';
-    setTimeout(() => { document.getElementById('success-overlay').style.display = 'none'; }, 5000);
-  }
-}
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root {
     --fire: #E8321A; --fire-dark: #B82510; --coal: #111214; --ash: #1C1E22;
@@ -429,6 +341,35 @@ async function submitHelpForm(e, sub) {
     margin-top: 4px;
   }
   .vt-category-label:first-child { border-top: none; margin-top: 0; padding-top: 2px; }
+
+  /* RAPID REPORT */
+  .form-type-card.type-rapid { border-color: var(--fire); position: relative; overflow: hidden; }
+  .form-type-card.type-rapid::before { content: 'RAPID'; position: absolute; top: 8px; right: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.14em; color: var(--fire); opacity: 0.7; }
+  .form-type-card.active.type-rapid { border-color: var(--fire); box-shadow: 0 0 0 2px var(--fire), 0 8px 32px rgba(232,50,26,0.25); }
+  .rr-vt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+  @media (max-width: 500px) { .rr-vt-grid { grid-template-columns: 1fr; } }
+  .rr-vt-btn { background: var(--smoke); border: 2px solid var(--steel); border-radius: 10px; color: var(--light); font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 14px 12px; cursor: pointer; transition: all 0.18s; text-align: left; display: flex; align-items: center; gap: 10px; }
+  .rr-vt-btn:hover { background: var(--steel); }
+  .rr-vt-btn.selected { border-color: var(--fire); background: rgba(232,50,26,0.12); color: #fff; }
+  .rr-vt-btn .rr-sev { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; padding: 2px 6px; border-radius: 4px; margin-left: auto; flex-shrink: 0; }
+  .rr-sev.critical { background: rgba(232,50,26,0.2); color: var(--fire); }
+  .rr-sev.high     { background: rgba(249,115,22,0.2); color: var(--orange); }
+  .rr-sev.medium   { background: rgba(245,158,11,0.2); color: var(--gold); }
+  .rr-sev.low      { background: rgba(16,185,129,0.2); color: var(--green); }
+  .rr-addr-row { display: flex; gap: 8px; align-items: stretch; }
+  .rr-addr-row input { flex: 1; }
+  .rr-gps-btn { background: var(--smoke); border: 1.5px solid var(--steel); border-radius: 8px; color: var(--fog); font-size: 1.2rem; padding: 0 14px; cursor: pointer; transition: all 0.2s; flex-shrink: 0; white-space: nowrap; }
+  .rr-gps-btn:hover { border-color: var(--green); color: var(--green); }
+  .rr-gps-btn.locating { border-color: var(--gold); color: var(--gold); animation: pulse 1s infinite; }
+  .rr-gps-btn.located  { border-color: var(--green); color: var(--green); }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .rr-submit-btn { width: 100%; background: var(--fire); border: none; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 18px; border-radius: 10px; cursor: pointer; transition: all 0.2s; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .rr-submit-btn:hover { background: var(--fire-dark); transform: translateY(-1px); }
+  .rr-submit-btn:active { transform: translateY(0); }
+  .rr-field-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fog); margin-bottom: 8px; display: block; }
+  .rr-section { margin-bottom: 20px; }
+  .rr-error { background: rgba(232,50,26,0.12); border: 1px solid rgba(232,50,26,0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; color: var(--fire); display: none; margin-bottom: 12px; }
+  .rr-error.show { display: block; }
 </style>
 </head>
 <body>
@@ -511,22 +452,103 @@ async function submitHelpForm(e, sub) {
     <div style="margin-top:8px"><span class="dept-label">Filing as: <strong id="hero-dept-label" style="color:var(--light);letter-spacing:0;text-transform:none"></strong></span></div>
   </div>
   <div class="section-title">Request Type</div>
-  <div class="form-type-grid">
+  <div class="form-type-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="form-type-card type-rapid" onclick="selectFormType('rapid')" style="grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:20px 24px">
+      <span class="card-icon" style="font-size:2rem;flex-shrink:0">⚡</span>
+      <div>
+        <div class="card-title" style="font-size:1.1rem;color:var(--fire)">Rapid Violation Report</div>
+        <div class="card-desc" style="margin-top:3px">On-scene violation capture — address, type, photo. Under 60 seconds.</div>
+      </div>
+    </div>
     <div class="form-type-card type-inspection" onclick="selectFormType('inspection')">
       <span class="card-icon">🏢</span>
-      <div class="card-title">Building Inspection with FD Walkthrough</div>
+      <div class="card-title">Building Inspection</div>
       <div class="card-desc">Schedule a fire safety inspection with full fire department walkthrough.</div>
     </div>
     <div class="form-type-card type-violation" onclick="selectFormType('violation')">
       <span class="card-icon">⚠️</span>
-      <div class="card-title">Code Violation</div>
-      <div class="card-desc">Report an observed fire code violation or hazardous condition.</div>
+      <div class="card-title">Full Violation Report</div>
+      <div class="card-desc">Detailed code violation report with all fields.</div>
     </div>
     <div class="form-type-card type-knox" onclick="selectFormType('knox')">
       <span class="card-icon">🔑</span>
       <div class="card-title">Knox Box Issues</div>
       <div class="card-desc">Request Fire Inspector to follow up for any Knox Box violation or issue.</div>
     </div>
+  </div>
+
+
+  <!-- RAPID REPORT FORM -->
+  <div id="form-rapid" class="form-panel">
+    <div class="form-header">
+      <div class="form-header-icon" style="background:rgba(232,50,26,0.12);color:var(--fire);font-size:1.6rem;width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center">⚡</div>
+      <div><h2>Rapid Violation Report</h2><p>On-scene capture — submit in under 60 seconds</p></div>
+      <div class="dept-badge" id="badge-rapid"></div>
+    </div>
+    <div id="rr-error" class="rr-error"></div>
+
+    <div class="rr-section">
+      <span class="rr-field-label">📍 Property Address <span style="color:var(--fire)">*</span></span>
+      <div class="rr-addr-row">
+        <input type="text" id="rr-address" placeholder="123 Main St, Yorktown Heights" autocomplete="street-address"
+          style="background:var(--smoke);border:1.5px solid var(--steel);border-radius:8px;color:var(--white);font-family:'Barlow',sans-serif;font-size:1rem;padding:14px;outline:none;width:100%;transition:border-color 0.2s"
+          oninput="this.style.borderColor='var(--blue)'">
+        <button class="rr-gps-btn" id="rr-gps-btn" onclick="rrGetGPS()" title="Use my location">📡 GPS</button>
+      </div>
+      <div id="rr-gps-status" style="font-size:0.75rem;color:var(--mist);margin-top:5px;min-height:16px"></div>
+    </div>
+
+    <div class="rr-section">
+      <span class="rr-field-label">⚠️ Violation Type <span style="color:var(--fire)">*</span> <span style="color:var(--mist);font-weight:400;text-transform:none;letter-spacing:0">(tap all that apply)</span></span>
+      <div class="rr-vt-grid" id="rr-vt-grid">
+        <button type="button" class="rr-vt-btn" data-vt="Blocked Exit / Egress" data-sev="critical" onclick="rrToggleVT(this)">🚪 Blocked Exit / Egress<span class="rr-sev critical">CRITICAL</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Locked or Obstructed Fire Escape / Stairwell" data-sev="critical" onclick="rrToggleVT(this)">🪜 Obstructed Stairwell<span class="rr-sev critical">CRITICAL</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Illegal Burning / Open Flame" data-sev="critical" onclick="rrToggleVT(this)">🔥 Illegal Burning / Open Flame<span class="rr-sev critical">CRITICAL</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Improperly Stored / Excessive Combustibles" data-sev="critical" onclick="rrToggleVT(this)">📦 Excessive Combustibles<span class="rr-sev critical">CRITICAL</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Overcrowding" data-sev="critical" onclick="rrToggleVT(this)">👥 Overcrowding<span class="rr-sev critical">CRITICAL</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Immediately Dangerous to Life Hazard" data-sev="critical" onclick="rrToggleVT(this)">☠️ IDLH<span class="rr-sev critical">CRITICAL</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Sprinkler System Issue" data-sev="high" onclick="rrToggleVT(this)">🚿 Sprinkler System Issue<span class="rr-sev high">HIGH</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Fire Alarm Issue" data-sev="high" onclick="rrToggleVT(this)">🔔 Fire Alarm Issue<span class="rr-sev high">HIGH</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Electrical Hazard" data-sev="high" onclick="rrToggleVT(this)">⚡ Electrical Hazard<span class="rr-sev high">HIGH</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Hoarding / Storage Hazard" data-sev="high" onclick="rrToggleVT(this)">🗄️ Hoarding / Storage<span class="rr-sev high">HIGH</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Fuel Storage Violation (Propane / Gasoline)" data-sev="high" onclick="rrToggleVT(this)">⛽ Fuel Storage Violation<span class="rr-sev high">HIGH</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Improper Hazmat Storage" data-sev="high" onclick="rrToggleVT(this)">☢️ Improper Hazmat Storage<span class="rr-sev high">HIGH</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Missing or Non-Functional Emergency Lighting" data-sev="medium" onclick="rrToggleVT(this)">💡 Emergency Lighting<span class="rr-sev medium">MEDIUM</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Blocked or Damaged FDC / Hydrant" data-sev="medium" onclick="rrToggleVT(this)">🚒 Blocked FDC / Hydrant<span class="rr-sev medium">MEDIUM</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Expired / Missing Extinguisher" data-sev="low" onclick="rrToggleVT(this)">🧯 Expired / Missing Extinguisher<span class="rr-sev low">LOW</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Missing Exit Signage" data-sev="low" onclick="rrToggleVT(this)">🪧 Missing Exit Signage<span class="rr-sev low">LOW</span></button>
+        <button type="button" class="rr-vt-btn" data-vt="Other" data-sev="medium" onclick="rrToggleVT(this)" style="grid-column:1/-1">➕ Other (describe below)<span class="rr-sev medium">—</span></button>
+      </div>
+    </div>
+
+    <div class="rr-section">
+      <span class="rr-field-label">📝 Notes <span style="color:var(--mist);font-weight:400;text-transform:none;letter-spacing:0">(optional — quick details)</span></span>
+      <textarea id="rr-notes" placeholder="e.g. Exit blocked by pallet stack, rear loading dock. Verbal warning issued."
+        style="width:100%;background:var(--smoke);border:1.5px solid var(--steel);border-radius:8px;color:var(--white);font-family:'Barlow',sans-serif;font-size:1rem;padding:14px;outline:none;resize:vertical;min-height:80px;transition:border-color 0.2s"
+        oninput="this.style.borderColor='var(--blue)'"></textarea>
+    </div>
+
+    <div class="rr-section">
+      <span class="rr-field-label">📷 Photo Evidence <span style="color:var(--mist);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></span>
+      <div onclick="document.getElementById('rr-photos').click()"
+        style="background:var(--smoke);border:1.5px dashed var(--steel);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:border-color 0.2s"
+        id="rr-photo-zone">
+        <div style="font-size:1.5rem;margin-bottom:4px">📷</div>
+        <div style="font-size:0.82rem;color:var(--fog)">Tap to add photos</div>
+      </div>
+      <input type="file" id="rr-photos" accept="image/*" multiple style="display:none" onchange="rrHandlePhotos(this)">
+      <div id="rr-photo-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+    </div>
+
+    <div style="background:var(--smoke);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem;color:var(--fog)">
+      Filing as: <strong style="color:var(--light)" id="rr-officer-label">—</strong> &nbsp;·&nbsp; <span id="rr-dept-label">—</span>
+      &nbsp;·&nbsp; <a onclick="showView('profile')" style="color:var(--blue);cursor:pointer;text-decoration:none">Edit Profile</a>
+    </div>
+
+    <button class="rr-submit-btn" onclick="submitRapidReport()">
+      <span>⚡</span><span>Submit Rapid Report</span>
+    </button>
+    <button type="button" onclick="resetRapidReport()" style="width:100%;background:none;border:1px solid var(--steel);color:var(--mist);font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:0.9rem;letter-spacing:0.06em;text-transform:uppercase;padding:11px;border-radius:8px;cursor:pointer;margin-top:8px;transition:all 0.2s">Clear</button>
   </div>
 
   <!-- INSPECTION FORM -->
@@ -1070,7 +1092,7 @@ function hideLoading() {
 
 const STATUS_LABELS = {submitted:'Submitted', under_review:'Under Review', enforcement:'Enforcement Underway', completed:'Completed'};
 const STATUS_CLASS = {submitted:'s-submitted', under_review:'s-under_review', enforcement:'s-enforcement', completed:'s-completed'};
-const TYPE_LABELS = {inspection:'Inspection', violation:'Violation', knox:'Knox Box', support:'Support', idea:'Change Idea'};
+const TYPE_LABELS = {inspection:'Inspection', violation:'Violation', knox:'Knox Box', rapid:'Rapid Report', support:'Support', idea:'Change Idea'};
 
 // === INIT ===
 async function init() {
@@ -1204,6 +1226,10 @@ function showApp() {
   document.querySelectorAll('.dept-badge').forEach(b => { b.textContent = SESSION.dept; b.style.display = 'block'; });
   const heroLabel = document.getElementById('hero-dept-label');
   if (heroLabel) heroLabel.textContent = '🚒 ' + SESSION.dept;
+  const rrOfficer = document.getElementById('rr-officer-label');
+  if (rrOfficer) rrOfficer.textContent = SESSION.fullName;
+  const rrDept = document.getElementById('rr-dept-label');
+  if (rrDept) rrDept.textContent = SESSION.dept;
   ['insp-sub','viol-sub','knox-sub','help-support-sub','help-idea-sub'].forEach(id => { const el=document.getElementById(id); if(el) el.value=SESSION.fullName; });
   // Auto-fill officer email fields from session profile
   const _emailFields = ['contact_email_insp','contact_email_viol','contact_email_knox'];
@@ -1983,6 +2009,227 @@ async function denyRequest(username) {
 
 
 document.addEventListener('DOMContentLoaded', init);
+
+// === RAPID REPORT ===
+let rrSelectedVT = [];
+let rrPhotoFiles = [];
+
+function rrToggleVT(btn) {
+  const vt = btn.dataset.vt;
+  const idx = rrSelectedVT.findIndex(v => v.vt === vt);
+  if (idx >= 0) {
+    rrSelectedVT.splice(idx, 1);
+    btn.classList.remove('selected');
+  } else {
+    rrSelectedVT.push({ vt, sev: btn.dataset.sev });
+    btn.classList.add('selected');
+  }
+}
+
+function rrGetGPS() {
+  const btn = document.getElementById('rr-gps-btn');
+  const status = document.getElementById('rr-gps-status');
+  if (!navigator.geolocation) { status.textContent = 'GPS not available on this device.'; return; }
+  btn.classList.add('locating');
+  btn.textContent = '⏳ Locating...';
+  status.textContent = 'Getting location...';
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    status.textContent = 'Resolving address...';
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const json = await res.json();
+      const a = json.address || {};
+      const addr = [
+        (a.house_number ? a.house_number + ' ' : '') + (a.road || ''),
+        a.city || a.town || a.village || a.county || '',
+        (a.state_abbr || a.state || 'NY'),
+        (a.postcode || '')
+      ].filter(Boolean).join(', ');
+      document.getElementById('rr-address').value = addr;
+      document.getElementById('rr-address').style.borderColor = 'var(--green)';
+      btn.classList.remove('locating'); btn.classList.add('located');
+      btn.textContent = '✅ GPS';
+      status.textContent = '📍 Location captured';
+    } catch(e) {
+      btn.classList.remove('locating');
+      btn.textContent = '📡 GPS';
+      status.textContent = 'Could not resolve address. Enter manually.';
+    }
+  }, err => {
+    btn.classList.remove('locating');
+    btn.textContent = '📡 GPS';
+    status.textContent = 'Location access denied. Enter address manually.';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function rrHandlePhotos(input) {
+  rrPhotoFiles = [...rrPhotoFiles, ...Array.from(input.files)].slice(0,5);
+  const preview = document.getElementById('rr-photo-preview');
+  preview.innerHTML = rrPhotoFiles.map((f,i) => `
+    <div style="position:relative;width:72px;height:72px">
+      <img src="${URL.createObjectURL(f)}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1.5px solid var(--steel)">
+      <button onclick="rrRemovePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--fire);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>`).join('');
+  input.value = '';
+}
+
+function rrRemovePhoto(i) {
+  rrPhotoFiles.splice(i, 1);
+  rrHandlePhotos({ files: [] });
+  const preview = document.getElementById('rr-photo-preview');
+  preview.innerHTML = rrPhotoFiles.map((f,idx) => `
+    <div style="position:relative;width:72px;height:72px">
+      <img src="${URL.createObjectURL(f)}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1.5px solid var(--steel)">
+      <button onclick="rrRemovePhoto(${idx})" style="position:absolute;top:-6px;right:-6px;background:var(--fire);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>`).join('');
+}
+
+function resetRapidReport() {
+  document.getElementById('rr-address').value = '';
+  document.getElementById('rr-address').style.borderColor = 'var(--steel)';
+  document.getElementById('rr-notes').value = '';
+  document.getElementById('rr-notes').style.borderColor = 'var(--steel)';
+  document.getElementById('rr-gps-btn').className = 'rr-gps-btn';
+  document.getElementById('rr-gps-btn').textContent = '📡 GPS';
+  document.getElementById('rr-gps-status').textContent = '';
+  document.getElementById('rr-photo-preview').innerHTML = '';
+  rrPhotoFiles = [];
+  rrSelectedVT = [];
+  document.querySelectorAll('.rr-vt-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('rr-error').classList.remove('show');
+}
+
+async function submitRapidReport() {
+  const errEl = document.getElementById('rr-error');
+  errEl.classList.remove('show');
+  const address = document.getElementById('rr-address').value.trim();
+  const notes   = document.getElementById('rr-notes').value.trim();
+
+  if (!address) { errEl.textContent = 'Address is required.'; errEl.classList.add('show'); document.getElementById('rr-address').focus(); return; }
+  if (rrSelectedVT.length === 0) { errEl.textContent = 'Select at least one violation type.'; errEl.classList.add('show'); return; }
+
+  // Determine highest severity
+  const sevRank = {critical:4, high:3, medium:2, low:1};
+  const topSev = rrSelectedVT.reduce((top, v) => sevRank[v.sev] > sevRank[top] ? v.sev : top, 'low');
+
+  const data = {
+    type:           'rapid',
+    address,
+    violation_type: rrSelectedVT.map(v => v.vt).join(', '),
+    severity:       topSev,
+    description:    notes || '',
+    submitted_by:   SESSION ? SESSION.fullName : '',
+    contact_email:  SESSION ? SESSION.email || '' : '',
+    department:     SESSION ? SESSION.dept : '',
+    photo_filenames: rrPhotoFiles.map(f => f.name).join(', '),
+    timestamp:      new Date().toISOString(),
+  };
+
+  showLoading('Submitting...');
+  const ok = await sheetsCreate(data);
+  hideLoading();
+
+  if (!ok) { errEl.textContent = 'Submission failed. Please try again.'; errEl.classList.add('show'); return; }
+
+  // Email notification
+  try {
+    const vtList = rrSelectedVT.map(v => '• ' + v.vt + ' [' + v.sev.toUpperCase() + ']').join('\n');
+    const details = 'RAPID REPORT\n\nAddress: ' + address + '\nSeverity: ' + topSev.toUpperCase() + '\nSubmitted by: ' + data.submitted_by + ' (' + data.department + ')\nTime: ' + new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) + '\n\nViolation(s):\n' + vtList + (notes ? '\n\nNotes:\n' + notes : '');
+    await Promise.all(EMAILJS_CONFIG.notifyEmails.map(addr =>
+      emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+        to_email:        addr,
+        reply_to:        data.contact_email || '',
+        subject:         '[RAPID — ' + topSev.toUpperCase() + '] ' + address,
+        ref_number:      '—',
+        submission_type: 'Rapid Violation Report',
+        department:      data.department,
+        submitted_by:    data.submitted_by,
+        address,
+        submitted_at:    new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}),
+        full_details:    details,
+      })
+    ));
+  } catch(e) { console.warn('Rapid report email failed:', e); }
+
+  resetRapidReport();
+  document.querySelectorAll('.form-type-card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+
+  // Success
+  const sc = document.getElementById('success-card');
+  if (sc) {
+    sc.querySelector('.success-icon').textContent = '⚡';
+    sc.querySelector('.success-title').textContent = 'Rapid Report Filed!';
+    sc.querySelector('.success-msg').textContent = topSev.toUpperCase() + ' violation at ' + address + ' — submitted and notified.';
+    document.getElementById('success-overlay').style.display = 'flex';
+    setTimeout(() => { document.getElementById('success-overlay').style.display = 'none'; }, 5000);
+  }
+}
+
+// === HELP / FEEDBACK ===
+function selectHelpType(sub) {
+  document.querySelectorAll('#view-help .form-type-card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#view-help .form-type-card').forEach(c => {
+    const oc = c.getAttribute('onclick') || '';
+    if (oc.includes("'" + sub + "'")) c.classList.add('active');
+  });
+  ['support','idea'].forEach(s => {
+    const p = document.getElementById('form-help-' + s);
+    if (p) p.classList.toggle('active', s === sub);
+  });
+  const target = document.getElementById('form-help-' + sub);
+  if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function resetHelpForm(sub) {
+  const f = document.getElementById('f-help-' + sub);
+  if (f) f.reset();
+  const nameEl = document.getElementById('help-' + sub + '-sub');
+  if (nameEl && SESSION) nameEl.value = SESSION.fullName;
+  const emailEls = f ? f.querySelectorAll('input[name="help_reply_email"]') : [];
+  emailEls.forEach(el => { el.value = SESSION ? SESSION.email || '' : ''; });
+}
+
+async function submitHelpForm(e, sub) {
+  e.preventDefault();
+  const f = document.getElementById('f-help-' + sub);
+  const data = Object.fromEntries(new FormData(f).entries());
+  data.type = sub;
+  data.department = SESSION ? SESSION.dept : '';
+  data.submittedByName = SESSION ? SESSION.fullName : '';
+  data.timestamp = new Date().toISOString();
+  const typeLabel = sub === 'support' ? 'Support Request' : 'Change Idea';
+  showLoading('Submitting ' + typeLabel + '...');
+  const ok = await sheetsCreate(data);
+  hideLoading();
+  if (!ok) { alert('Submission failed. Please try again.'); return; }
+  try {
+    const details = 'Type: ' + typeLabel + '\nCategory: ' + (data.help_category||'—') + '\nUrgency/Priority: ' + (data.help_urgency||'—') + '\nSubmitted by: ' + (data.submittedByName||'—') + ' (' + data.department + ')\nReply Email: ' + (data.help_reply_email||'—') + '\n\nSubject: ' + (data.help_subject||'—') + '\n\nDescription:\n' + (data.help_description||'—');
+    await Promise.all(EMAILJS_CONFIG.notifyEmails.map(addr =>
+      emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+        to_email: addr, reply_to: data.help_reply_email||'',
+        subject: '[' + typeLabel + '] ' + (data.help_subject||'—') + ' — ' + data.department,
+        ref_number:'—', submission_type: typeLabel, department: data.department,
+        submitted_by: data.submittedByName, address:'—',
+        submitted_at: new Date().toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}),
+        full_details: details,
+      })
+    ));
+  } catch(err) { console.warn('Help email failed:', err); }
+  resetHelpForm(sub);
+  document.querySelectorAll('#view-help .form-type-card').forEach(c => c.classList.remove('active'));
+  ['support','idea'].forEach(s => { const p = document.getElementById('form-help-'+s); if(p) p.classList.remove('active'); });
+  const sc = document.getElementById('success-card');
+  if (sc) {
+    sc.querySelector('.success-icon').textContent = sub === 'support' ? '🛠️' : '💡';
+    sc.querySelector('.success-title').textContent = sub === 'support' ? 'Support Request Submitted!' : 'Idea Submitted!';
+    sc.querySelector('.success-msg').textContent = 'Your ' + typeLabel.toLowerCase() + ' has been received.';
+    document.getElementById('success-overlay').style.display = 'flex';
+    setTimeout(() => { document.getElementById('success-overlay').style.display = 'none'; }, 5000);
+  }
+}
+
 </script>
 
 <nav class="mobile-nav" id="mobile-nav" style="display:none">
